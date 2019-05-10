@@ -93,7 +93,9 @@ namespace BlockingHttpClient
             {
                 if (Interlocked.Read(ref _requests) < requestsPerSecond * _stopwatch.Elapsed.TotalSeconds)
                 {
-                    _ = ExecuteRequest(uri, syncOverAsync);
+                    Interlocked.Increment(ref _requests);
+
+                    ThreadPool.QueueUserWorkItem((state) => ExecuteRequest(uri, syncOverAsync));
                 }
                 else
                 {
@@ -104,14 +106,10 @@ namespace BlockingHttpClient
 
         private static async Task ExecuteRequest(Uri uri, bool syncOverAsync)
         {
-            Interlocked.Increment(ref _requests);
-
             var start = _stopwatch.ElapsedTicks;
             var task = _httpClient.GetAsync(uri);
             if (syncOverAsync)
             {
-                // Run synchronous Wait() on threadpool
-                await Task.Yield();
                 task.Wait();
             }
             else
