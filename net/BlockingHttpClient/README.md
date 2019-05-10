@@ -1,4 +1,4 @@
-# SyncOverAsync - .NET - DelayHttpServer
+# SyncOverAsync - .NET - BlockingHttpClient
 
 ## Overview
 * Implements an HTTP client which uses either async or sync-over-async to wait for responses
