@@ -27,6 +27,12 @@ namespace BlockingHttpClient
 
             [Option('s', "syncOverAsync", Default = false)]
             public bool SyncOverAsync { get; set; }
+
+            [Option('w', "minWorkerThreads")]
+            public int? MinWorkerThreads { get; set; }
+
+            [Option('c', "minCompletionPortThreads")]
+            public int? MinCompletionPortThreads { get; set; }
         }
 
         static int Main(string[] args)
@@ -58,6 +64,17 @@ namespace BlockingHttpClient
             {
                 throw new InvalidOperationException("Must be run with server GC");
             }
+
+            ThreadPool.GetMinThreads(out var previousMinWorkerThreads, out var previousMinCompletionPortThreads);
+            ThreadPool.SetMinThreads(
+                options.MinWorkerThreads ?? previousMinWorkerThreads,
+                options.MinCompletionPortThreads ?? previousMinCompletionPortThreads
+                );
+
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var minCompletionPortThreads);
+            ThreadPool.GetMaxThreads(out var maxWorkerThreads, out var maxCompletionPortThreads);
+            Console.WriteLine($"ThreadPool.GetMinThreads(): {minWorkerThreads}, {minCompletionPortThreads}");
+            Console.WriteLine($"ThreadPool.GetMaxThreads(): {maxWorkerThreads}, {maxCompletionPortThreads}");
 
             Console.WriteLine();
 
@@ -136,14 +153,13 @@ namespace BlockingHttpClient
                 var currentElapsed = elapsed - lastElapsed;
                 lastElapsed = elapsed;
 
-                WriteResult(requests, responses, responseLatencyTicks, elapsed, currentRequests, currentResponses, currentResponseLatencyTicks, currentElapsed);
+                WriteResult(requests, responses, elapsed, currentRequests, currentResponses, currentResponseLatencyTicks, currentElapsed);
             }
         }
 
-        private static void WriteResult(long totalRequests, long totalResponses, long totalResponseLatencyTicks, TimeSpan totalElapsed,
+        private static void WriteResult(long totalRequests, long totalResponses, TimeSpan totalElapsed,
             long currentRequests, long currentResponses, long currentResponseLatencyTicks, TimeSpan currentElapsed)
         {
-            var totalResponseLatencyMs = ((double)totalResponseLatencyTicks / Stopwatch.Frequency) * 1000;
             var currentResponseLatencyMs = ((double)currentResponseLatencyTicks / Stopwatch.Frequency) * 1000;
             var threads = Process.GetCurrentProcess().Threads.Count;
 
@@ -154,11 +170,8 @@ namespace BlockingHttpClient
                 $"\tOut Req\t{totalRequests - totalResponses}" +
                 $"\tCur Q/S\t{Math.Round(currentRequests / currentElapsed.TotalSeconds)}" +
                 $"\tCur R/S\t{Math.Round(currentResponses / currentElapsed.TotalSeconds)}" +
-                $"\tCur Lat\t{Math.Round(currentResponseLatencyMs / currentResponses, 2)}ms" +
+                $"\tCur Lat\t{Math.Round(currentResponseLatencyMs / currentResponses, 0)}ms" +
                 $"\tThreads\t{threads}"
-                //$"\tAvg Q/S\t{Math.Round(totalRequests / totalElapsed.TotalSeconds)}" +
-                //$"\tAvg R/S\t{Math.Round(totalResponses / totalElapsed.TotalSeconds)}" +
-                //$"\tAvg Lat\t{Math.Round(totalResponseLatencyMs / totalRequests, 2)}ms"
             );
         }
     }
