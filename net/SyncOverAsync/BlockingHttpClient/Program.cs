@@ -88,11 +88,13 @@ namespace BlockingHttpClient
         private static async Task ExecuteRequest(Uri uri, bool syncOverAsync)
         {
             Interlocked.Increment(ref _requests);
+            var start = _stopwatch.ElapsedTicks;
 
+            // Require to avoid blocking calling thread for syncOverAsync case
             await Task.Yield();
 
-            var start = _stopwatch.ElapsedTicks;
             var task = _httpClient.GetAsync(uri);
+
             if (syncOverAsync)
             {
                 task.Wait();
