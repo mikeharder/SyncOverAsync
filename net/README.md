@@ -3,6 +3,6 @@
 Experiments with sync-over-async in various languages/frameworks:
 
 * Clients
-  * [BlockingHttpClient](BlockingHttpClient/README.md)
+  * [BlockingHttpClient](BlockingHttpClient)
 * Servers
-  * [DelayHttpServer](DelayHttpServer/README.md)
+  * [DelayHttpServer](DelayHttpServer)
