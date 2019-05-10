@@ -27,6 +27,12 @@ namespace BlockingHttpClient
 
             [Option('s', "syncOverAsync", Default = false)]
             public bool SyncOverAsync { get; set; }
+
+            [Option('w', "minWorkerThreads")]
+            public int? MinWorkerThreads { get; set; }
+
+            [Option('c', "minCompletionPortThreads")]
+            public int? MinCompletionPortThreads { get; set; }
         }
 
         static int Main(string[] args)
@@ -58,6 +64,17 @@ namespace BlockingHttpClient
             {
                 throw new InvalidOperationException("Must be run with server GC");
             }
+
+            ThreadPool.GetMinThreads(out var previousMinWorkerThreads, out var previousMinCompletionPortThreads);
+            ThreadPool.SetMinThreads(
+                options.MinWorkerThreads ?? previousMinWorkerThreads,
+                options.MinCompletionPortThreads ?? previousMinCompletionPortThreads
+                );
+
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var minCompletionPortThreads);
+            ThreadPool.GetMaxThreads(out var maxWorkerThreads, out var maxCompletionPortThreads);
+            Console.WriteLine($"ThreadPool.GetMinThreads(): {minWorkerThreads}, {minCompletionPortThreads}");
+            Console.WriteLine($"ThreadPool.GetMaxThreads(): {maxWorkerThreads}, {maxCompletionPortThreads}");
 
             Console.WriteLine();
 
