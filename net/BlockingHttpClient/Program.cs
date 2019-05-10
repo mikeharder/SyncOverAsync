@@ -153,11 +153,11 @@ namespace BlockingHttpClient
                 var currentElapsed = elapsed - lastElapsed;
                 lastElapsed = elapsed;
 
-                WriteResult(requests, responses, elapsed, currentRequests, currentResponses, currentResponseLatencyTicks, currentElapsed);
+                WriteResult(requests, responses, currentRequests, currentResponses, currentResponseLatencyTicks, currentElapsed);
             }
         }
 
-        private static void WriteResult(long totalRequests, long totalResponses, TimeSpan totalElapsed,
+        private static void WriteResult(long totalRequests, long totalResponses,
             long currentRequests, long currentResponses, long currentResponseLatencyTicks, TimeSpan currentElapsed)
         {
             var currentResponseLatencyMs = ((double)currentResponseLatencyTicks / Stopwatch.Frequency) * 1000;
