@@ -16,9 +16,9 @@ public class Program {
 
     private static final StopWatch STOP_WATCH = new StopWatch();
 
-    private static AtomicLong _requests;
-    private static AtomicLong _responses;
-    private static AtomicLong _responseLatencyTicks;
+    private static AtomicLong _requests = new AtomicLong(0);
+    private static AtomicLong _responses = new AtomicLong(0);
+    private static AtomicLong _responseLatencyTicks = new AtomicLong(0);
 
     private static ReactorNettyClient client;
 
@@ -55,7 +55,17 @@ public class Program {
         {
             if (_requests.get() < (requestPerSec * STOP_WATCH.getTime(TimeUnit.MILLISECONDS) / 1000.0))
             {
-                Mono.defer(() -> Mono.just(client.send())).subscribeOn(Schedulers.elastic()).subscribe();
+                _requests.incrementAndGet();
+
+                long start = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+
+//                Mono.defer(() -> Mono.just(client.send())).subscribeOn(Schedulers.elastic()).subscribe();
+                client.sendAsync().doOnNext(s -> {
+                    long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+
+                    _responseLatencyTicks.addAndGet(end - start);
+                    _responses.incrementAndGet();
+                }).subscribe();
             }
             else
             {
