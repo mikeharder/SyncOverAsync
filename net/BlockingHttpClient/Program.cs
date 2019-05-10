@@ -79,11 +79,12 @@ namespace BlockingHttpClient
 
             Console.WriteLine();
 
-            var writeResultsTask = WriteResults();
+            var writeResultsThread = new Thread(WriteResults);
+            writeResultsThread.Start();
 
             RunTest(options.Uri, options.RequestsPerSecond, options.SyncOverAsync);
 
-            writeResultsTask.Wait();
+            writeResultsThread.Join();
 
             return 0;
         }
@@ -128,7 +129,7 @@ namespace BlockingHttpClient
             task.Result.Dispose();
         }
 
-        private static async Task WriteResults()
+        private static void WriteResults()
         {
             var lastRequestsQueued = (long)0;
             var lastResponses = (long)0;
@@ -137,7 +138,7 @@ namespace BlockingHttpClient
 
             while (true)
             {
-                await Task.Delay(TimeSpan.FromSeconds(1));
+                Thread.Sleep(1000);
 
                 var requestsQueued = Interlocked.Read(ref _requestsQueued);
                 var currentRequestsQueued = requestsQueued - lastRequestsQueued;
