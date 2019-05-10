@@ -173,9 +173,6 @@ namespace BlockingHttpClient
                 $"\tCur R/S\t{Math.Round(currentResponses / currentElapsed.TotalSeconds)}" +
                 $"\tCur Lat\t{Math.Round(currentResponseLatencyMs / currentResponses, 0)}ms" +
                 $"\tThreads\t{threads}"
-                //$"\tAvg Q/S\t{Math.Round(totalRequests / totalElapsed.TotalSeconds)}" +
-                //$"\tAvg R/S\t{Math.Round(totalResponses / totalElapsed.TotalSeconds)}" +
-                //$"\tAvg Lat\t{Math.Round(totalResponseLatencyMs / totalRequests, 2)}ms"
             );
         }
     }
