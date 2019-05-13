@@ -6,6 +6,7 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +50,7 @@ public class Program {
             pool = Executors.newCachedThreadPool();
         }
 
-        while (true)
+        while (!Thread.currentThread().isInterrupted())
         {
             if (_requests.get() < (requestPerSec * STOP_WATCH.getTime(TimeUnit.MILLISECONDS) / 1000.0))
             {
@@ -58,14 +59,20 @@ public class Program {
                 long start = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
 
                 if (syncOverAsync == SyncOverAsyncOption.NETTY_ASYNC) {
-                    client.sendAsync().doOnNext(s -> {
+                    client.sendAsync().doOnSuccess(s -> {
                         long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
 
                         _responseLatencyTicks.addAndGet(end - start);
                         _responses.incrementAndGet();
                     }).subscribe();
                 } else if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
-                    pool.submit(() -> client.send());
+                    CompletableFuture.runAsync(() -> client.send(), pool)
+                            .whenCompleteAsync((res, t) -> {
+                                long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+
+                                _responseLatencyTicks.addAndGet(end - start);
+                                _responses.incrementAndGet();
+                            });
                 }
             }
             else
@@ -127,7 +134,7 @@ public class Program {
         builder.append("\tOut Req\t").append(totalRequests - totalResponses);
         builder.append("\tCur Q/S\t").append(Math.round(currentRequests * 1000 / currentElapsedMs));
         builder.append("\tCur R/S\t").append(Math.round(currentResponses * 1000 / currentElapsedMs));
-        builder.append("\tCur Lat\t").append(Math.round(currentResponseLatencyMs / currentRequests)).append("ms");
+        builder.append("\tCur Lat\t").append(currentRequests == 0 ? "N/A" : Math.round(currentResponseLatencyMs / currentRequests)).append("ms");
         builder.append("\tThreads\t").append(threads);
 
         System.out.println(builder.toString());

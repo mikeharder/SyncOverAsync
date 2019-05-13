@@ -3,8 +3,6 @@ package com.azure.syncoverasync;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
-import java.nio.charset.StandardCharsets;
-
 public class ReactorNettyClient {
     private HttpClient client;
 
@@ -12,14 +10,12 @@ public class ReactorNettyClient {
         client = HttpClient.create().baseUrl(uri);
     }
 
-    public Mono<String> sendAsync() {
-        return client.get().responseContent()
-                .aggregate()
-                .map(bb -> bb.toString(StandardCharsets.UTF_8));
+    public Mono<Void> sendAsync() {
+        return client.get().response().ignoreElement().then();
     }
 
     // not recommended
-    public String send() {
-        return sendAsync().block();
+    public void send() {
+        sendAsync().block();
     }
 }
