@@ -1,12 +1,11 @@
 package com.azure.syncoverasync;
 
 import org.apache.commons.lang3.time.StopWatch;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -41,15 +40,14 @@ public class Program {
 
         System.out.println(String.format("Running config: uri: %s, request/sec: %d, syncOverAsync: %s", uri, requestPerSec, syncOverAsync));
 
-        Executors.newSingleThreadExecutor().submit(() -> WriteResults());
-
-
+        WriteResults();
 
         client = new ReactorNettyClient(uri);
 
-//        CountDownLatch latch = new CountDownLatch(1);
-
-//        ExecutorService pool = Executors.newCachedThreadPool();
+        ExecutorService pool = null;
+        if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
+            pool = Executors.newCachedThreadPool();
+        }
 
         while (true)
         {
@@ -59,13 +57,16 @@ public class Program {
 
                 long start = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
 
-//                Mono.defer(() -> Mono.just(client.send())).subscribeOn(Schedulers.elastic()).subscribe();
-                client.sendAsync().doOnNext(s -> {
-                    long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+                if (syncOverAsync == SyncOverAsyncOption.NETTY_ASYNC) {
+                    client.sendAsync().doOnNext(s -> {
+                        long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
 
-                    _responseLatencyTicks.addAndGet(end - start);
-                    _responses.incrementAndGet();
-                }).subscribe();
+                        _responseLatencyTicks.addAndGet(end - start);
+                        _responses.incrementAndGet();
+                    }).subscribe();
+                } else if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
+                    pool.submit(() -> client.send());
+                }
             }
             else
             {
@@ -76,39 +77,41 @@ public class Program {
 
     private static void WriteResults()
     {
-        long lastRequests = (long)0;
-        long lastResponses = (long)0;
-        long lastResponseLatencyTicks = (long)0;
-        long lastElapsedMs = 0;
+        AtomicLong lastRequests = new AtomicLong((long) 0);
+        AtomicLong lastResponses = new AtomicLong((long) 0);
+        AtomicLong lastResponseLatencyTicks = new AtomicLong((long) 0);
+        AtomicLong lastElapsedMs = new AtomicLong();
 
         STOP_WATCH.start();
 
-        while (true)
-        {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        Flux.interval(Duration.ofSeconds(1))
+                .doOnNext(s -> {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
 
-            long requests = _requests.get();
-            long currentRequests = requests - lastRequests;
-            lastRequests = requests;
+                    long requests = _requests.get();
+                    long currentRequests = requests - lastRequests.get();
+                    lastRequests.set(requests);
 
-            long responses = _responses.get();
-            long currentResponses = responses - lastResponses;
-            lastResponses = responses;
+                    long responses = _responses.get();
+                    long currentResponses = responses - lastResponses.get();
+                    lastResponses.set(responses);
 
-            long responseLatencyTicks = _responseLatencyTicks.get();
-            long currentResponseLatencyTicks = responseLatencyTicks - lastResponseLatencyTicks;
-            lastResponseLatencyTicks = responseLatencyTicks;
+                    long responseLatencyTicks = _responseLatencyTicks.get();
+                    long currentResponseLatencyTicks = responseLatencyTicks - lastResponseLatencyTicks.get();
+                    lastResponseLatencyTicks.set(responseLatencyTicks);
 
-            long elapsed = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
-            long currentElapsed = elapsed - lastElapsedMs;
-            lastElapsedMs = elapsed;
+                    long elapsed = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+                    long currentElapsed = elapsed - lastElapsedMs.get();
+                    lastElapsedMs.set(elapsed);
 
-            WriteResult(requests, responses, currentRequests, currentResponses, currentResponseLatencyTicks, currentElapsed);
-        }
+                    WriteResult(requests, responses, currentRequests, currentResponses, currentResponseLatencyTicks, currentElapsed);
+                })
+        .subscribeOn(Schedulers.newSingle("reporter"))
+        .subscribe();
     }
 
     private static void WriteResult(long totalRequests, long totalResponses,
