@@ -39,7 +39,7 @@ namespace DelayHttpServer
                 })
                 .Configure(app => app.Run(async context =>
                 {
-                    var delayMilliseconds = context.Request.Path.Value.Substring(1);
+                    var delayMilliseconds = context.Request.Path.Value.Substring(1).Trim(new char[] { '/' });
 
                     if (!string.IsNullOrEmpty(delayMilliseconds))
                     {

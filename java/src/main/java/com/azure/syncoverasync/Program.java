@@ -46,44 +46,51 @@ public class Program {
         client = new ReactorNettyClient(uri);
 
         ExecutorService pool = null;
-        if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
-            pool = Executors.newCachedThreadPool();
-        }
 
-        while (!Thread.currentThread().isInterrupted())
-        {
-            if (_requests.get() < (requestPerSec * STOP_WATCH.getTime(TimeUnit.MILLISECONDS) / 1000.0))
-            {
-                _requests.incrementAndGet();
+        try {
+            if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
+                pool = Executors.newCachedThreadPool();
+            }
 
-                long start = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+//        if (syncOverAsync == SyncOverAsyncOption.NETTY_REACTOR) {
+//            Mono.just(_requests)
+//                    .repeatWhen(fl -> fl.)
+//        }
 
-                if (syncOverAsync == SyncOverAsyncOption.NETTY_ASYNC) {
-                    client.sendAsync().doOnSuccess(s -> {
-                        long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+            while (!Thread.currentThread().isInterrupted()) {
+                if (_requests.get() < (requestPerSec * STOP_WATCH.getTime(TimeUnit.MILLISECONDS) / 1000.0)) {
+                    _requests.incrementAndGet();
 
-                        _responseLatencyTicks.addAndGet(end - start);
-                        _responses.incrementAndGet();
-                    }).subscribe();
-                } else if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
-                    CompletableFuture.runAsync(() -> client.send(), pool)
-                            .whenCompleteAsync((res, t) -> {
-                                long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+                    long start = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
 
-                                _responseLatencyTicks.addAndGet(end - start);
-                                _responses.incrementAndGet();
-                            });
+                    if (syncOverAsync == SyncOverAsyncOption.NETTY_ASYNC) {
+                        client.sendAsync().doOnSuccess(s -> {
+                            long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+
+                            _responseLatencyTicks.addAndGet(end - start);
+                            _responses.incrementAndGet();
+                        }).subscribe();
+                    } else if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
+                        CompletableFuture.supplyAsync(() -> client.send(), pool)
+                                .whenComplete((res, t) -> {
+                                    long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+
+                                    _responseLatencyTicks.addAndGet(end - start);
+                                    _responses.incrementAndGet();
+                                });
+                    }
+                } else {
+                    Thread.sleep(1);
                 }
             }
-            else
-            {
-                Thread.sleep(1);
+        } finally {
+            if (pool != null) {
+                pool.shutdown();
             }
         }
     }
 
-    private static void WriteResults()
-    {
+    private static void WriteResults() {
         AtomicLong lastRequests = new AtomicLong((long) 0);
         AtomicLong lastResponses = new AtomicLong((long) 0);
         AtomicLong lastResponseLatencyTicks = new AtomicLong((long) 0);
@@ -92,12 +99,8 @@ public class Program {
         STOP_WATCH.start();
 
         Flux.interval(Duration.ofSeconds(1))
+                .takeUntil(l -> Thread.currentThread().isInterrupted())
                 .doOnNext(s -> {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
 
                     long requests = _requests.get();
                     long currentRequests = requests - lastRequests.get();
@@ -117,13 +120,12 @@ public class Program {
 
                     WriteResult(requests, responses, currentRequests, currentResponses, currentResponseLatencyTicks, currentElapsed);
                 })
-        .subscribeOn(Schedulers.newSingle("reporter"))
-        .subscribe();
+                .subscribeOn(Schedulers.newSingle("reporter"))
+                .subscribe();
     }
 
     private static void WriteResult(long totalRequests, long totalResponses,
-                                    long currentRequests, long currentResponses, long currentResponseLatencyMs, long currentElapsedMs)
-    {
+                                    long currentRequests, long currentResponses, long currentResponseLatencyMs, long currentElapsedMs) {
         long threads = Thread.activeCount();
 
         StringBuilder builder = new StringBuilder();
@@ -132,8 +134,8 @@ public class Program {
         builder.append("\tTot Req\t").append(totalRequests);
         builder.append("\tTot Rsp\t").append(totalResponses);
         builder.append("\tOut Req\t").append(totalRequests - totalResponses);
-        builder.append("\tCur Q/S\t").append(Math.round(currentRequests * 1000 / currentElapsedMs));
-        builder.append("\tCur R/S\t").append(Math.round(currentResponses * 1000 / currentElapsedMs));
+        builder.append("\tCur Q/S\t").append(currentRequests == 0 ? "N/A" : Math.round(currentRequests * 1000 / currentElapsedMs));
+        builder.append("\tCur R/S\t").append(currentRequests == 0 ? "N/A" : Math.round(currentResponses * 1000 / currentElapsedMs));
         builder.append("\tCur Lat\t").append(currentRequests == 0 ? "N/A" : Math.round(currentResponseLatencyMs / currentRequests)).append("ms");
         builder.append("\tThreads\t").append(threads);
 
