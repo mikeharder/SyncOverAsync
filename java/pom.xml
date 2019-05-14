@@ -12,6 +12,7 @@
     <uri>http://localhost:8080/5000</uri>
     <rps>100</rps>
     <soa>NETTY_SYNC_OVER_ASYNC</soa>
+    <duration>15</duration>
   </properties>
 
   <dependencies>
@@ -66,6 +67,8 @@
             <argument>${rps}</argument>
             <argument>-soa</argument>
             <argument>${soa}</argument>
+            <argument>-duration</argument>
+            <argument>${duration}</argument>
           </arguments>
           <mainClass>com.azure.syncoverasync.Program</mainClass>
         </configuration>
