@@ -16,9 +16,10 @@
 ```
 > mvn compile [ -Duri=http://localhost:8080/5000 ] [ -Drps=100 ] [ -Dsoa=NETTY_SYNC_OVER_ASYNC ]
 
-  -Duri    Request URI. Default: http://localhost:8080/5000
-  -Drqs    Requests per second. Default: 100
-  -Dsoa    Sync over async strategy, accepted values are NETTY_ASYNC, NETTY_SYNC_OVER_ASYNC, NETTY_REACTOR, OKHTTP_SYNC. Default: NETTY_SYNC_OVER_ASYNC
+  -Duri        Request URI. Default: http://localhost:8080/5000
+  -Drqs        Requests per second. Default: 100
+  -Dsoa        Sync over async strategy, accepted values are NETTY_ASYNC, NETTY_SYNC_OVER_ASYNC, NETTY_REACTOR, OKHTTP_SYNC. Default: NETTY_SYNC_OVER_ASYNC
+  -Dduration   How many seconds this application will run. Ctrl-C on the maven command doesn't kill the Java process so this is necessary for freeing up the resources. Default: 15
 ```
 
 ## Results - Async - Healthy
