@@ -10,6 +10,7 @@ namespace DelayHttpServer
 {
     class Program
     {
+        private static readonly char[] _pathTrimChars = new char[] { '/' };
         private static readonly byte[] _helloWorldPayload = Encoding.UTF8.GetBytes("Hello, World!");
         private static readonly int _helloWorldPayloadLength = _helloWorldPayload.Length;
 
@@ -39,7 +40,7 @@ namespace DelayHttpServer
                 })
                 .Configure(app => app.Run(async context =>
                 {
-                    var delayMilliseconds = context.Request.Path.Value.Substring(1).Trim(new char[] { '/' });
+                    var delayMilliseconds = context.Request.Path.Value.Trim(_pathTrimChars);
 
                     if (!string.IsNullOrEmpty(delayMilliseconds))
                     {
