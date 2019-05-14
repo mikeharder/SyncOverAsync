@@ -4,7 +4,7 @@ import okhttp3.Request;
 
 import java.io.IOException;
 
-public class OkHttpClient {
+public class OkHttpClient implements SyncHttpClient {
     private okhttp3.OkHttpClient client;
     private String uri;
 

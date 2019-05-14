@@ -3,7 +3,7 @@ package com.azure.syncoverasync;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
-public class ReactorNettyClient {
+public class ReactorNettyClient implements SyncHttpClient, AsyncHttpClient {
     private HttpClient client;
 
     public ReactorNettyClient(String uri) {

@@ -8,11 +8,7 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,10 +24,6 @@ public class Program {
     private static AtomicLong _responses = new AtomicLong(0);
     private static AtomicLong _responseLatencyTicks = new AtomicLong(0);
     private static int duration = 15; // sec
-
-    private static ReactorNettyClient client;
-    private static ExecutorService pool;
-    private static Disposable reporterDisposable;
 
     public static void main(String[] args) throws Exception {
         String uri = null;
@@ -56,50 +48,60 @@ public class Program {
 
         WriteResults();
 
-        client = new ReactorNettyClient(uri);
-
-        if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
-            pool = Executors.newCachedThreadPool();
-        }
-
-//        if (syncOverAsync == SyncOverAsyncOption.NETTY_REACTOR) {
-//            Mono.just(_requests)
-//                    .repeatWhen(fl -> fl.)
-//        }
-        List<Disposable> disposables = new ArrayList<>();
-
-        while (!KILLED.get()) {
-            if (_requests.get() < (requestPerSec * STOP_WATCH.getTime(TimeUnit.MILLISECONDS) / 1000.0)) {
-                _requests.incrementAndGet();
-
-                long start = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
-
-                if (syncOverAsync == SyncOverAsyncOption.NETTY_ASYNC) {
-                    disposables.add(client.sendAsync().doOnSuccess(s -> {
-                        long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
-                        _responseLatencyTicks.addAndGet(end - start);
-                        _responses.incrementAndGet();
-                    }).subscribe());
-                } else if (syncOverAsync == SyncOverAsyncOption.NETTY_SYNC_OVER_ASYNC) {
-                    CompletableFuture.supplyAsync(() -> client.send(), pool)
-                            .whenComplete((res, t) -> {
-                                long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
-
-                                _responseLatencyTicks.addAndGet(end - start);
-                                _responses.incrementAndGet();
-                            });
+        switch (syncOverAsync) {
+            case NETTY_ASYNC: {
+                AsyncHttpClient client = new ReactorNettyClient(uri);
+                List<Disposable> disposables = new ArrayList<>();
+                while (!KILLED.get()) {
+                    if (_requests.get() < (requestPerSec * STOP_WATCH.getTime(TimeUnit.MILLISECONDS) / 1000.0)) {
+                        _requests.incrementAndGet();
+                        long start = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+                        disposables.add(client.sendAsync().doOnSuccess(s -> {
+                            long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+                            _responseLatencyTicks.addAndGet(end - start);
+                            _responses.incrementAndGet();
+                        }).subscribe());
+                    } else {
+                        Thread.sleep(1);
+                    }
                 }
-            } else {
-                Thread.sleep(1);
+                // Clean up
+                for (Disposable disposable : disposables) {
+                    if (!disposable.isDisposed()) {
+                        disposable.dispose();
+                    }
+                }
+                break;
+            }
+            case NETTY_SYNC_OVER_ASYNC:
+            case OKHTTP_SYNC: {
+                SyncHttpClient client;
+                if (syncOverAsync == SyncOverAsyncOption.OKHTTP_SYNC) {
+                    client = new OkHttpClient(uri);
+                } else {
+                    client = new ReactorNettyClient(uri);
+                }
+                ExecutorService pool = Executors.newCachedThreadPool();
+                while (!KILLED.get()) {
+                    if (_requests.get() < (requestPerSec * STOP_WATCH.getTime(TimeUnit.MILLISECONDS) / 1000.0)) {
+                        _requests.incrementAndGet();
+                        long start = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+                        CompletableFuture.supplyAsync(() -> client.send(), pool)
+                                .whenComplete((res, t) -> {
+                                    long end = STOP_WATCH.getTime(TimeUnit.MILLISECONDS);
+                                    _responseLatencyTicks.addAndGet(end - start);
+                                    _responses.incrementAndGet();
+                                });
+                    } else {
+                        Thread.sleep(1);
+                    }
+                }
+                pool.shutdown();
+                break;
             }
         }
 
         System.out.println("Exiting...");
-        for (Disposable disposable : disposables) {
-            if (!disposable.isDisposed()) {
-                disposable.dispose();
-            }
-        }
         System.exit(0);
     }
 
@@ -111,7 +113,7 @@ public class Program {
 
         STOP_WATCH.start();
 
-        reporterDisposable = Flux.interval(Duration.ofSeconds(1))
+        Flux.interval(Duration.ofSeconds(1))
                 .take(duration)
                 .doOnNext(s -> {
 
@@ -137,9 +139,6 @@ public class Program {
                 .doOnComplete(() -> {
                     System.out.println("Reporter exiting...");
                     KILLED.set(true);
-                    if (pool != null) {
-                        pool.shutdown();
-                    }
                 })
                 .subscribe();
     }

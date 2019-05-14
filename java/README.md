@@ -190,3 +190,107 @@ Running config: uri: http://localhost:8080/5000, request/sec: 300, syncOverAsync
 
 * It took a while to stablize
 * Still using > 8000 threads
+
+## Results - Sync - Healthy
+When we run 1000 requests per second with a synchronous but less performant client OkHttp, it turns out to be a lot more successful than sync over async with Netty.
+
+```
+> mvn compile -Dsoa=OKHTTP_SYNC -Drps=1000 -Dduration=30
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ---------------------< com.azure:sync-over-async >----------------------
+[INFO] Building sync-over-async 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ sync-over-async ---
+[WARNING] Using platform encoding (Cp1252 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] Copying 0 resource
+[INFO]
+[INFO] --- maven-compiler-plugin:3.8.0:compile (default-compile) @ sync-over-async ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO]
+[INFO] --- exec-maven-plugin:1.6.0:exec (default) @ sync-over-async ---
+Running config: uri: http://localhost:8080/5000, request/sec: 1000, syncOverAsync: OKHTTP_SYNC, duration: 30 sec
+2019-05-14T11:32:03.716-07:00   Tot Req 1195    Tot Rsp 0       Out Req 1195    Cur Q/S 1000    Cur R/S 0       Cur Lat 0ms     Threads 1200
+2019-05-14T11:32:04.693-07:00   Tot Req 2193    Tot Rsp 0       Out Req 2193    Cur Q/S 1000    Cur R/S 0       Cur Lat 0ms     Threads 2198
+2019-05-14T11:32:05.693-07:00   Tot Req 3193    Tot Rsp 0       Out Req 3193    Cur Q/S 999     Cur R/S 0       Cur Lat 0ms     Threads 3198
+2019-05-14T11:32:06.692-07:00   Tot Req 4193    Tot Rsp 0       Out Req 4193    Cur Q/S 1001    Cur R/S 0       Cur Lat 0ms     Threads 4198
+2019-05-14T11:32:07.692-07:00   Tot Req 5191    Tot Rsp 0       Out Req 5191    Cur Q/S 998     Cur R/S 0       Cur Lat 0ms     Threads 5196
+2019-05-14T11:32:08.834-07:00   Tot Req 6140    Tot Rsp 0       Out Req 6140    Cur Q/S 824     Cur R/S 0       Cur Lat 0ms     Threads 6144
+2019-05-14T11:32:09.693-07:00   Tot Req 7192    Tot Rsp 2182    Out Req 5010    Cur Q/S 1239    Cur R/S 2570    Cur Lat 11172ms Threads 6587
+2019-05-14T11:32:10.693-07:00   Tot Req 8193    Tot Rsp 3181    Out Req 5012    Cur Q/S 1001    Cur R/S 999     Cur Lat 5002ms  Threads 6587
+2019-05-14T11:32:11.734-07:00   Tot Req 9143    Tot Rsp 4020    Out Req 5123    Cur Q/S 901     Cur R/S 796     Cur Lat 4434ms  Threads 6587
+2019-05-14T11:32:12.819-07:00   Tot Req 10065   Tot Rsp 4077    Out Req 5988    Cur Q/S 847     Cur R/S 52      Cur Lat 337ms   Threads 6587
+2019-05-14T11:32:13.693-07:00   Tot Req 11192   Tot Rsp 6023    Out Req 5169    Cur Q/S 1311    Cur R/S 2265    Cur Lat 9559ms  Threads 6587
+2019-05-14T11:32:14.693-07:00   Tot Req 12193   Tot Rsp 7159    Out Req 5034    Cur Q/S 1001    Cur R/S 1136    Cur Lat 5821ms  Threads 6587
+2019-05-14T11:32:15.693-07:00   Tot Req 13193   Tot Rsp 8181    Out Req 5012    Cur Q/S 1000    Cur R/S 1022    Cur Lat 5122ms  Threads 6587
+2019-05-14T11:32:16.692-07:00   Tot Req 14193   Tot Rsp 9035    Out Req 5158    Cur Q/S 1001    Cur R/S 854     Cur Lat 4289ms  Threads 6587
+2019-05-14T11:32:17.738-07:00   Tot Req 15126   Tot Rsp 9071    Out Req 6055    Cur Q/S 891     Cur R/S 34      Cur Lat 216ms   Threads 6587
+2019-05-14T11:32:18.692-07:00   Tot Req 16193   Tot Rsp 11169   Out Req 5024    Cur Q/S 1118    Cur R/S 2199    Cur Lat 11044ms Threads 6587
+2019-05-14T11:32:19.693-07:00   Tot Req 17193   Tot Rsp 12153   Out Req 5040    Cur Q/S 1000    Cur R/S 984     Cur Lat 4935ms  Threads 6587
+2019-05-14T11:32:20.692-07:00   Tot Req 18193   Tot Rsp 13182   Out Req 5011    Cur Q/S 1000    Cur R/S 1029    Cur Lat 5158ms  Threads 6587
+2019-05-14T11:32:21.693-07:00   Tot Req 19185   Tot Rsp 14130   Out Req 5055    Cur Q/S 990     Cur R/S 946     Cur Lat 4792ms  Threads 6587
+2019-05-14T11:32:22.697-07:00   Tot Req 20198   Tot Rsp 14813   Out Req 5385    Cur Q/S 1008    Cur R/S 680     Cur Lat 3276ms  Threads 6587
+2019-05-14T11:32:23.695-07:00   Tot Req 21196   Tot Rsp 16172   Out Req 5024    Cur Q/S 1001    Cur R/S 1363    Cur Lat 6835ms  Threads 6587
+2019-05-14T11:32:24.693-07:00   Tot Req 22194   Tot Rsp 17576   Out Req 4618    Cur Q/S 1000    Cur R/S 1406    Cur Lat 6709ms  Threads 6587
+2019-05-14T11:32:25.693-07:00   Tot Req 23193   Tot Rsp 18680   Out Req 4513    Cur Q/S 1000    Cur R/S 1105    Cur Lat 4760ms  Threads 6587
+2019-05-14T11:32:26.693-07:00   Tot Req 24194   Tot Rsp 19478   Out Req 4716    Cur Q/S 1000    Cur R/S 797     Cur Lat 3648ms  Threads 6587
+2019-05-14T11:32:27.693-07:00   Tot Req 25193   Tot Rsp 20180   Out Req 5013    Cur Q/S 999     Cur R/S 702     Cur Lat 2891ms  Threads 6587
+2019-05-14T11:32:28.693-07:00   Tot Req 26193   Tot Rsp 21646   Out Req 4547    Cur Q/S 1001    Cur R/S 1467    Cur Lat 6840ms  Threads 6587
+2019-05-14T11:32:29.693-07:00   Tot Req 27193   Tot Rsp 23264   Out Req 3929    Cur Q/S 1000    Cur R/S 1618    Cur Lat 7111ms  Threads 6587
+2019-05-14T11:32:30.693-07:00   Tot Req 28192   Tot Rsp 24460   Out Req 3732    Cur Q/S 999     Cur R/S 1196    Cur Lat 4675ms  Threads 6587
+2019-05-14T11:32:31.696-07:00   Tot Req 29196   Tot Rsp 25226   Out Req 3970    Cur Q/S 1000    Cur R/S 762     Cur Lat 3388ms  Threads 6587
+2019-05-14T11:32:32.697-07:00   Tot Req 30187   Tot Rsp 25899   Out Req 4288    Cur Q/S 990     Cur R/S 672     Cur Lat 2589ms  Threads 6587
+```
+
+## Results - Sync - Unhealthy
+But the limitation of the sync client shows when requests per second goes higher.
+
+```
+mvn compile -Dsoa=OKHTTP_SYNC -Drps=1500 -Dduration=30
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ---------------------< com.azure:sync-over-async >----------------------
+[INFO] Building sync-over-async 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ sync-over-async ---
+[WARNING] Using platform encoding (Cp1252 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] Copying 0 resource
+[INFO]
+[INFO] --- maven-compiler-plugin:3.8.0:compile (default-compile) @ sync-over-async ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO]
+[INFO] --- exec-maven-plugin:1.6.0:exec (default) @ sync-over-async ---
+Running config: uri: http://localhost:8080/5000, request/sec: 1500, syncOverAsync: OKHTTP_SYNC, duration: 30 sec
+2019-05-14T11:33:14.034-07:00   Tot Req 1515    Tot Rsp 0       Out Req 1515    Cur Q/S 1262    Cur R/S 0       Cur Lat 0ms     Threads 1519
+2019-05-14T11:33:14.995-07:00   Tot Req 3283    Tot Rsp 0       Out Req 3283    Cur Q/S 1787    Cur R/S 0       Cur Lat 0ms     Threads 3288
+2019-05-14T11:33:16.003-07:00   Tot Req 4782    Tot Rsp 0       Out Req 4782    Cur Q/S 1487    Cur R/S 0       Cur Lat 0ms     Threads 4787
+2019-05-14T11:33:17.011-07:00   Tot Req 5602    Tot Rsp 0       Out Req 5602    Cur Q/S 809     Cur R/S 0       Cur Lat 0ms     Threads 5607
+2019-05-14T11:33:18.272-07:00   Tot Req 7546    Tot Rsp 5       Out Req 7541    Cur Q/S 1546    Cur R/S 3       Cur Lat 5ms     Threads 7545
+2019-05-14T11:33:19.597-07:00   Tot Req 8648    Tot Rsp 18      Out Req 8630    Cur Q/S 828     Cur R/S 9       Cur Lat 40ms    Threads 8635
+2019-05-14T11:33:20.035-07:00   Tot Req 10442   Tot Rsp 21      Out Req 10421   Cur Q/S 4105    Cur R/S 6       Cur Lat 8ms     Threads 10429
+2019-05-14T11:33:21.438-07:00   Tot Req 10594   Tot Rsp 85      Out Req 10509   Cur Q/S 108     Cur R/S 45      Cur Lat 2752ms  Threads 10514
+2019-05-14T11:33:22.008-07:00   Tot Req 12107   Tot Rsp 147     Out Req 11960   Cur Q/S 2668    Cur R/S 109     Cur Lat 308ms   Threads 11965
+2019-05-14T11:33:22.996-07:00   Tot Req 15278   Tot Rsp 3154    Out Req 12124   Cur Q/S 3209    Cur R/S 3043    Cur Lat 7968ms  Threads 13807
+2019-05-14T11:33:25.469-07:00   Tot Req 16546   Tot Rsp 3206    Out Req 13340   Cur Q/S 512     Cur R/S 21      Cur Lat 318ms   Threads 13807
+2019-05-14T11:33:25.470-07:00   Tot Req 16546   Tot Rsp 3206    Out Req 13340   Cur Q/S N/A     Cur R/S N/A     Cur Lat N/Ams   Threads 13807
+2019-05-14T11:33:26-07:00       Tot Req 19690   Tot Rsp 3307    Out Req 16383   Cur Q/S 5887    Cur R/S 189     Cur Lat 324ms   Threads 16389
+2019-05-14T11:33:27.002-07:00   Tot Req 20493   Tot Rsp 3345    Out Req 17148   Cur Q/S 805     Cur R/S 38      Cur Lat 469ms   Threads 17158
+2019-05-14T11:33:27.997-07:00   Tot Req 22784   Tot Rsp 3692    Out Req 19092   Cur Q/S 2300    Cur R/S 348     Cur Lat 907ms   Threads 19097
+2019-05-14T11:33:28.995-07:00   Tot Req 24271   Tot Rsp 3732    Out Req 20539   Cur Q/S 1489    Cur R/S 40      Cur Lat 223ms   Threads 20544
+2019-05-14T11:33:30.029-07:00   Tot Req 25597   Tot Rsp 3766    Out Req 21831   Cur Q/S 1281    Cur R/S 32      Cur Lat 336ms   Threads 21836
+2019-05-14T11:33:31.002-07:00   Tot Req 27281   Tot Rsp 3774    Out Req 23507   Cur Q/S 1732    Cur R/S 8       Cur Lat 50ms    Threads 23512
+2019-05-14T11:33:32.001-07:00   Tot Req 28788   Tot Rsp 3784    Out Req 25004   Cur Q/S 1508    Cur R/S 10      Cur Lat 105ms   Threads 25010
+2019-05-14T11:33:32.995-07:00   Tot Req 30284   Tot Rsp 3858    Out Req 26426   Cur Q/S 1505    Cur R/S 74      Cur Lat 563ms   Threads 26431
+2019-05-14T11:33:33.995-07:00   Tot Req 31781   Tot Rsp 3947    Out Req 27834   Cur Q/S 1497    Cur R/S 89      Cur Lat 711ms   Threads 27839
+2019-05-14T11:33:34.999-07:00   Tot Req 33288   Tot Rsp 3967    Out Req 29321   Cur Q/S 1500    Cur R/S 19      Cur Lat 234ms   Threads 29326
+2019-05-14T11:33:36.028-07:00   Tot Req 34781   Tot Rsp 3978    Out Req 30803   Cur Q/S 1449    Cur R/S 10      Cur Lat 137ms   Threads 30808
+2019-05-14T11:33:37.002-07:00   Tot Req 36132   Tot Rsp 4195    Out Req 31937   Cur Q/S 1388    Cur R/S 223     Cur Lat 3247ms  Threads 31941
+2019-05-14T11:33:38.146-07:00   Tot Req 37782   Tot Rsp 4288    Out Req 33494   Cur Q/S 1437    Cur R/S 81      Cur Lat 1041ms  Threads 33500
+2019-05-14T11:33:40.537-07:00   Tot Req 39122   Tot Rsp 4303    Out Req 34819   Cur Q/S 559     Cur R/S 6       Cur Lat 191ms   Threads 34824
+2019-05-14T11:33:40.537-07:00   Tot Req 39122   Tot Rsp 4303    Out Req 34819   Cur Q/S N/A     Cur R/S N/A     Cur Lat N/Ams   Threads 34824
+2019-05-14T11:33:41.013-07:00   Tot Req 40840   Tot Rsp 4314    Out Req 36526   Cur Q/S 3647    Cur R/S 23      Cur Lat 122ms   Threads 36531
+2019-05-14T11:33:42.012-07:00   Tot Req 42175   Tot Rsp 4325    Out Req 37850   Cur Q/S 1335    Cur R/S 11      Cur Lat 166ms   Threads 37855
+2019-05-14T11:33:43.007-07:00   Tot Req 44237   Tot Rsp 4340    Out Req 39897   Cur Q/S 2070    Cur R/S 15      Cur Lat 181ms   Threads 39903
+```
