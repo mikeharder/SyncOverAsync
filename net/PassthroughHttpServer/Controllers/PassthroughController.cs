@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+
+#if NET48
+using System.Net;
+#else
+using System.Net.Http;
+#endif
 
 namespace PassthroughHttpServer.Controllers
 {
@@ -11,9 +15,8 @@ namespace PassthroughHttpServer.Controllers
     [ApiController]
     public class PassthroughController : ControllerBase
     {
+#if !NET48
         private static readonly HttpClient _httpClient = new HttpClient();
-#if NET48
-        private static readonly WebClient _webClient = new WebClient();
 #endif
 
         [HttpGet]
@@ -21,30 +24,52 @@ namespace PassthroughHttpServer.Controllers
         {
             Response.Headers.Add("Threads", Process.GetCurrentProcess().Threads.Count.ToString());
 
+            string content;
+
             if (string.Equals(threadingModel, "async", StringComparison.OrdinalIgnoreCase))
             {
-                var result = await _httpClient.GetAsync(uri);
-                var content = await result.Content.ReadAsStringAsync();
-                return content;
+#if NET48
+                using (var webClient = new WebClient()) {
+                    content = await webClient.DownloadStringTaskAsync(uri);
+                }
+#else
+                using (var response = await _httpClient.GetAsync(uri))
+                {
+                    content = await response.Content.ReadAsStringAsync();
+                }
+#endif
             }
             else if (string.Equals(threadingModel, "syncoverasync", StringComparison.OrdinalIgnoreCase))
             {
-                var result = _httpClient.GetAsync(uri).Result;
-                var content = result.Content.ReadAsStringAsync().Result;
-                return content;
+#if NET48
+                using (var webClient = new WebClient())
+                {
+                    content = webClient.DownloadStringTaskAsync(uri).Result;
+                }
+#else
+                using (var response = _httpClient.GetAsync(uri).Result)
+                {
+                    content = response.Content.ReadAsStringAsync().Result;
+                }
+#endif
             }
             else if (string.Equals(threadingModel, "sync", StringComparison.OrdinalIgnoreCase))
             {
 #if NET48
-                return _webClient.DownloadString(uri);
+                using (var webClient = new WebClient())
+                {
+                    content = webClient.DownloadString(uri);
+                }
 #else
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("There is currently no fully sync HTTP client in .NET Core");
 #endif
             }
             else
-                    {
-                throw new InvalidOperationException();
+            {
+                throw new InvalidOperationException($"Invalid threadingModel: '{threadingModel}'");
             }
+
+            return content;
         }
     }
 }
