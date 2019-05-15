@@ -121,6 +121,7 @@ ThreadPool.GetMaxThreads(): 32767, 1000
 2019-05-10T22:30:46.1503915Z    Tot Req 32      Pen Req 0       Out Req 10      Tot Rsp 22      Cur Q/S 2       Cur R/S 2       Cur Lat 5274ms  Threads 50
 2019-05-10T22:30:47.1544159Z    Tot Req 34      Pen Req 0       Out Req 10      Tot Rsp 24      Cur Q/S 2       Cur R/S 2       Cur Lat 5278ms  Threads 50
 2019-05-10T22:30:48.1591992Z    Tot Req 36      Pen Req 0       Out Req 10      Tot Rsp 26      Cur Q/S 2       Cur R/S 2       Cur Lat 5276ms  Threads 50```
+```
 
 Or if the `minWorkerThreads` is set large enough:
 

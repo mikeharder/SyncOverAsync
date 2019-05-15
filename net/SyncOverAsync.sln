@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.28908.199
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DelayHttpServer", "DelayHttpServer\DelayHttpServer.csproj", "{209DEB5F-2A8F-4353-84AF-BF2C2DE94FA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlockingHttpClient", "BlockingHttpClient\BlockingHttpClient.csproj", "{E3ED5970-1D63-4095-8D2A-F85728E707A3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlockingHttpClient", "BlockingHttpClient\BlockingHttpClient.csproj", "{E3ED5970-1D63-4095-8D2A-F85728E707A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HttpLoadGenerator", "HttpLoadGenerator\HttpLoadGenerator.csproj", "{6336442D-8B15-413D-AA79-0F3B22D3AE88}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{E3ED5970-1D63-4095-8D2A-F85728E707A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3ED5970-1D63-4095-8D2A-F85728E707A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E3ED5970-1D63-4095-8D2A-F85728E707A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6336442D-8B15-413D-AA79-0F3B22D3AE88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6336442D-8B15-413D-AA79-0F3B22D3AE88}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6336442D-8B15-413D-AA79-0F3B22D3AE88}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6336442D-8B15-413D-AA79-0F3B22D3AE88}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
