@@ -127,36 +127,44 @@ namespace HttpLoadGenerator
 
         private static async Task ExecuteRequest(Uri uri, bool warmup = false)
         {
-            Interlocked.Increment(ref _requests);
-
-            var start = _stopwatch.ElapsedTicks;
-            var response = await _httpClient.GetAsync(uri);
-            var end = _stopwatch.ElapsedTicks;
-
-            Interlocked.Add(ref _responseLatencyTicks, end - start);
-
-            if (response.IsSuccessStatusCode)
+            try
             {
-                Interlocked.Increment(ref _successfulResponses);
+                Interlocked.Increment(ref _requests);
+
+                var start = _stopwatch.ElapsedTicks;
+                using (var response = await _httpClient.GetAsync(uri))
+                {
+                    var end = _stopwatch.ElapsedTicks;
+
+                    Interlocked.Add(ref _responseLatencyTicks, end - start);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Interlocked.Increment(ref _successfulResponses);
+                    }
+                    else
+                    {
+                        Interlocked.Increment(ref _failedResponses);
+                    }
+
+                    // If value cannot be parsed, "threads" will be set to 0
+                    int.TryParse(response.Headers.GetValues("Threads").SingleOrDefault(), out var threads);
+                    _serverThreads = threads;
+
+                    _responseData.Add(new ResponseData
+                    {
+                        StartTicks = start,
+                        EndTicks = end,
+                        Status = response.StatusCode,
+                        ServerThreads = threads
+                    });
+                }
             }
-            else
+            catch (Exception e)
             {
-                Interlocked.Increment(ref _failedResponses);
+                // Nothing awaits the result of this method, so exceptions must be handled manually.
+                Console.WriteLine(e);
             }
-
-            // If value cannot be parsed, "threads" will be set to 0
-            int.TryParse(response.Headers.GetValues("Threads").SingleOrDefault(), out var threads);
-            _serverThreads = threads;
-
-            _responseData.Add(new ResponseData
-            {
-                StartTicks = start,
-                EndTicks = end,
-                Status = response.StatusCode,
-                ServerThreads = threads
-            });
-
-            response.Dispose();
         }
 
         private static void WriteResults(int durationSeconds)
