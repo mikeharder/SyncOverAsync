@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading;
 
 #if NET48
 using System.Net;
@@ -15,14 +16,30 @@ namespace PassthroughHttpServer.Controllers
     [ApiController]
     public class PassthroughController : ControllerBase
     {
+        private static int _minWorkerThreads;
+
 #if !NET48
         private static readonly HttpClient _httpClient = new HttpClient();
 #endif
 
+        static PassthroughController() {
+            ThreadPool.GetMinThreads(out _minWorkerThreads, out _);
+        }
+
         [HttpGet]
-        public async Task<ActionResult<string>> Get(string uri, string threadingModel = "async")
+        public async Task<ActionResult<string>> Get(string uri, string threadingModel = "async", int minWorkerThreads = -1)
         {
-            Response.Headers.Add("Threads", Process.GetCurrentProcess().Threads.Count.ToString());
+            if (minWorkerThreads > -1 && minWorkerThreads != _minWorkerThreads)
+            {
+                var previousMinWorkerThreads = Interlocked.Exchange(ref _minWorkerThreads, minWorkerThreads);
+                if (previousMinWorkerThreads != minWorkerThreads)
+                {
+                    LogMinThreads();
+                    ThreadPool.GetMinThreads(out _, out var minCompletionPortThreads);
+                    ThreadPool.SetMinThreads(minWorkerThreads, minCompletionPortThreads);
+                    LogMinThreads();
+                }
+            }
 
             string content;
 
@@ -69,7 +86,15 @@ namespace PassthroughHttpServer.Controllers
                 throw new InvalidOperationException($"Invalid threadingModel: '{threadingModel}'");
             }
 
+            Response.Headers.Add("Threads", Process.GetCurrentProcess().Threads.Count.ToString());
+
             return content;
+        }
+
+        private static void LogMinThreads()
+        {
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var minCompletionPortThreads);
+            Console.WriteLine($"ThreadPool.GetMinThreads(): {minWorkerThreads}, {minCompletionPortThreads}");
         }
     }
 }

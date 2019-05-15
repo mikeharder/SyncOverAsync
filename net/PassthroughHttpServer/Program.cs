@@ -26,17 +26,7 @@ namespace PassthroughHttpServer
                 throw new InvalidOperationException("Must be run with server GC");
             }
 
-            ThreadPool.GetMinThreads(out var previousMinWorkerThreads, out var previousMinCompletionPortThreads);
-
-            int.TryParse(Environment.GetEnvironmentVariable("MIN_WORKER_THREADS"), out var minWorkerThreads);
-            int.TryParse(Environment.GetEnvironmentVariable("MIN_COMPLETION_PORT_THREADS"), out var minCompletionPortThreads);
-
-            ThreadPool.SetMinThreads(
-                (minWorkerThreads > 0) ? minWorkerThreads : previousMinWorkerThreads,
-                (minCompletionPortThreads > 0) ? minCompletionPortThreads : previousMinCompletionPortThreads
-            );
-
-            ThreadPool.GetMinThreads(out minWorkerThreads, out minCompletionPortThreads);
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var minCompletionPortThreads);
             ThreadPool.GetMaxThreads(out var maxWorkerThreads, out var maxCompletionPortThreads);
             Console.WriteLine($"ThreadPool.GetMinThreads(): {minWorkerThreads}, {minCompletionPortThreads}");
             Console.WriteLine($"ThreadPool.GetMaxThreads(): {maxWorkerThreads}, {maxCompletionPortThreads}");
