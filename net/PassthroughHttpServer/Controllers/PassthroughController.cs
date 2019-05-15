@@ -19,6 +19,8 @@ namespace PassthroughHttpServer.Controllers
         [HttpGet]
         public async Task<ActionResult<string>> Get(string uri, string threadingModel = "async")
         {
+            Response.Headers.Add("Threads", Process.GetCurrentProcess().Threads.Count.ToString());
+
             if (string.Equals(threadingModel, "async", StringComparison.OrdinalIgnoreCase))
             {
                 var result = await _httpClient.GetAsync(uri);

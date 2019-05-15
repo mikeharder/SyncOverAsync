@@ -21,6 +21,7 @@ namespace HttpLoadGenerator
         private static int _successfulResponses;
         private static int _failedResponses;
         private static long _responseLatencyTicks;
+        private static int _serverThreads;
         private static ConcurrentBag<ResponseData> _responseData;
 
         private static int Responses => _successfulResponses + _failedResponses;
@@ -78,6 +79,13 @@ namespace HttpLoadGenerator
             {
                 Console.WriteLine($"Warming up for {options.WarmupDurationSeconds} seconds...");
                 RunTest(options.Uri, options.RequestsPerSecond, options.WarmupDurationSeconds);
+
+                var warmupPath = Path.Combine(Path.GetDirectoryName(options.OutputFile), string.Concat(
+                    Path.GetFileNameWithoutExtension(options.OutputFile),
+                    ".warmup",
+                    Path.GetExtension(options.OutputFile)));
+                WriteLatency(warmupPath);
+
                 Console.WriteLine();
             }
 
@@ -136,11 +144,16 @@ namespace HttpLoadGenerator
                 Interlocked.Increment(ref _failedResponses);
             }
 
+            // If value cannot be parsed, "threads" will be set to 0
+            int.TryParse(response.Headers.GetValues("Threads").SingleOrDefault(), out var threads);
+            _serverThreads = threads;
+
             _responseData.Add(new ResponseData
             {
                 StartTicks = start,
                 EndTicks = end,
                 Status = response.StatusCode,
+                ServerThreads = threads
             });
 
             response.Dispose();
@@ -198,7 +211,8 @@ namespace HttpLoadGenerator
                 $"\tCur Q/s\t{Math.Round(currentRequests / currentElapsed.TotalSeconds)}" +
                 $"\tCur S/s\t{Math.Round(currentSuccessfulResponses / currentElapsed.TotalSeconds)}" +
                 $"\tCur E/s\t{Math.Round(currentFailedResponses / currentElapsed.TotalSeconds)}" +
-                $"\tCur Lat\t{Math.Round(currentResponseLatencyMs / (currentSuccessfulResponses + currentFailedResponses), 0)}ms"
+                $"\tCur Lat\t{Math.Round(currentResponseLatencyMs / (currentSuccessfulResponses + currentFailedResponses), 0)}ms" +
+                $"\tSrv Thd\t{_serverThreads}"
             );
         }
 
@@ -206,14 +220,16 @@ namespace HttpLoadGenerator
         {
             using (var writer = new StreamWriter(path))
             {
-                writer.WriteLine("StartMs,LatencyMs,HttpStatus");
+                writer.WriteLine("StartMs,LatencyMs,HttpStatus,ServerThreads");
                 foreach (var responseData in _responseData.OrderBy(r => r.StartTicks))
                 {
                     writer.Write(responseData.StartMilliseconds);
                     writer.Write(',');
                     writer.Write(responseData.LatencyMilliseconds);
                     writer.Write(',');
-                    writer.WriteLine((int)responseData.Status);
+                    writer.Write((int)responseData.Status);
+                    writer.Write(',');
+                    writer.WriteLine(responseData.ServerThreads);
                 }
             }
         }
@@ -223,6 +239,7 @@ namespace HttpLoadGenerator
             public long StartTicks { get; set; }
             public long EndTicks { get; set; }
             public HttpStatusCode Status { get; set; }
+            public int ServerThreads { get; set; }
 
             public double StartMilliseconds => ((double)StartTicks / Stopwatch.Frequency) * 1000;
             public double LatencyMilliseconds => (((double)(EndTicks - StartTicks)) / Stopwatch.Frequency) * 1000;

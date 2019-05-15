@@ -20,6 +20,7 @@
 < Content-Type: text/plain; charset=utf-8
 < Server: Kestrel
 < Transfer-Encoding: chunked
+< Threads: 50
 <
 Hello, World!
 ```
