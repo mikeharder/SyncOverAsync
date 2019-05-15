@@ -4,7 +4,6 @@
 * Implements an HTTP load generator
 * Issues a fixed number of requests every second, regardless of how many requests are already queued
 * Reports intermediate results once per second
-* 
 
 ## Prerequisites
 * .NET Core SDK >= 2.2.203 ([Download](https://dotnet.microsoft.com/download/dotnet-core/2.2) | [Docker](https://hub.docker.com/_/microsoft-dotnet-core-sdk/))
