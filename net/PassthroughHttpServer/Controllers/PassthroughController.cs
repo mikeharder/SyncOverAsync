@@ -38,6 +38,7 @@ namespace PassthroughHttpServer.Controllers
                     ThreadPool.GetMinThreads(out _, out var minCompletionPortThreads);
                     ThreadPool.SetMinThreads(minWorkerThreads, minCompletionPortThreads);
                     LogMinThreads();
+                    Console.WriteLine();
                 }
             }
 
