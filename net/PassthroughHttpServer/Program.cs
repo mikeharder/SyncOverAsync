@@ -5,6 +5,7 @@ using System.Runtime;
 using System.Threading;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
 namespace PassthroughHttpServer
 {
@@ -41,10 +42,20 @@ namespace PassthroughHttpServer
             CreateWebHostBuilder(args).Build().Run();
         }
 
+#if NET48
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseUrls("http://0.0.0.0:8081")
                 .UseStartup<Startup>();
+#else
+        public static IHostBuilder CreateWebHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseUrls("http://0.0.0.0:8081");
+                    webBuilder.UseStartup<Startup>();
+                });
+#endif
 
         private static void WriteResults()
         {
