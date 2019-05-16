@@ -10,6 +10,7 @@
     * `syncoverasync`: Sync over async (`_httpClient.GetAsync(uri).Result`)
     * `sync`: Full sync (`_webClient.DownloadString(uri)`
       * `WebClient.DownloadString()` is only implemented as full sync on netfx48.  On netcoreapp22, it's implemented as sync-over-async.
+  * `minWorkerThreads` (optional): Minimum number of worker threads in the ThreadPool
 * If the `uri` is missing or invalid, or if the `threadingModel` is invalid, the server returns `HTTP 500 Internal Server Error`
 * Responds to all valid requests with the content from the backend response
 ```
@@ -26,8 +27,8 @@ Hello, World!
 ```
 
 ## Prerequisites
-* .NET Core SDK >= 2.2.203 ([Download](https://dotnet.microsoft.com/download/dotnet-core/2.2) | [Docker](https://hub.docker.com/_/microsoft-dotnet-core-sdk/))
-* .NET Framework ([Download](https://dotnet.microsoft.com/download/dotnet-framework/net48))
+* .NET Core SDK >= 3.0.100-preview5-011568 ([Download](https://dotnet.microsoft.com/download/dotnet-core/3.0) | [Docker](https://hub.docker.com/_/microsoft-dotnet-core-sdk/))
+* .NET Framework >= 4.8 (Windows Only) ([Download](https://dotnet.microsoft.com/download/dotnet-framework/net48))
 
 ## Run
 ```

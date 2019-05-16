@@ -18,7 +18,7 @@ Hello, World!
 ```
 
 ## Prerequisites
-* .NET Core SDK >= 2.2.203 ([Download](https://dotnet.microsoft.com/download/dotnet-core/2.2) | [Docker](https://hub.docker.com/_/microsoft-dotnet-core-sdk/))
+* .NET Core SDK >= 3.0.100-preview5-011568 ([Download](https://dotnet.microsoft.com/download/dotnet-core/3.0) | [Docker](https://hub.docker.com/_/microsoft-dotnet-core-sdk/))
 
 ## Run
 ```

@@ -27,7 +27,7 @@ ERROR(S):
 
 ## Results - Async - Healthy
 ```
-> dotnet run -c release -u "http://localhost:8081?uri=http://localhost:8080/5000" -r 100
+> dotnet run -c release -- -u "http://localhost:8081?uri=http://localhost:8080/5000" -r 100
 
 2019-05-15T19:44:03.2662832Z    Tot Req 99      Out Req 99      Suc Rsp 0       Err Rsp 0       Cur Q/s 98      Cur S/s 0       Cur E/s 0       Cur Lat NaNms   Srv Thd 66
 2019-05-15T19:44:04.2865652Z    Tot Req 201     Out Req 201     Suc Rsp 0       Err Rsp 0       Cur Q/s 100     Cur S/s 0       Cur E/s 0       Cur Lat NaNms   Srv Thd 66
