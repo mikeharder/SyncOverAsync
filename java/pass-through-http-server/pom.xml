@@ -5,15 +5,8 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.azure</groupId>
-  <artifactId>sync-over-async</artifactId>
+  <artifactId>pass-through-http-client</artifactId>
   <version>1.0.0</version>
-
-  <properties>
-    <uri>http://localhost:8080/5000</uri>
-    <rps>100</rps>
-    <soa>NETTY_SYNC_OVER_ASYNC</soa>
-    <duration>15</duration>
-  </properties>
 
   <dependencies>
     <dependency>
@@ -30,6 +23,16 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
       <version>3.5</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-core</artifactId>
+      <version>3.7.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web</artifactId>
+      <version>3.7.0</version>
     </dependency>
   </dependencies>
 
@@ -60,17 +63,9 @@
           <arguments>
             <argument>-classpath</argument>
             <classpath/>
-            <argument>com.azure.syncoverasync.Program</argument>
-            <argument>-uri</argument>
-            <argument>${uri}</argument>
-            <argument>-rps</argument>
-            <argument>${rps}</argument>
-            <argument>-soa</argument>
-            <argument>${soa}</argument>
-            <argument>-duration</argument>
-            <argument>${duration}</argument>
+            <argument>com.azure.passthrough.PassThroughHttpServer</argument>
           </arguments>
-          <mainClass>com.azure.syncoverasync.Program</mainClass>
+          <mainClass>com.azure.passthrough.PassThroughHttpServer</mainClass>
         </configuration>
       </plugin>
     </plugins>
