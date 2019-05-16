@@ -22,74 +22,85 @@ namespace PassthroughHttpServer.Controllers
         private static readonly HttpClient _httpClient = new HttpClient();
 #endif
 
-        static PassthroughController() {
+        static PassthroughController()
+        {
             ThreadPool.GetMinThreads(out _minWorkerThreads, out _);
         }
 
         [HttpGet]
         public async Task<ActionResult<string>> Get(string uri, string threadingModel = "async", int minWorkerThreads = -1)
         {
-            if (minWorkerThreads > -1 && minWorkerThreads != _minWorkerThreads)
+            try
             {
-                var previousMinWorkerThreads = Interlocked.Exchange(ref _minWorkerThreads, minWorkerThreads);
-                if (previousMinWorkerThreads != minWorkerThreads)
+                Interlocked.Increment(ref Program.CurrentRequests);
+
+                if (minWorkerThreads > -1 && minWorkerThreads != _minWorkerThreads)
                 {
-                    LogMinThreads();
-                    ThreadPool.GetMinThreads(out _, out var minCompletionPortThreads);
-                    ThreadPool.SetMinThreads(minWorkerThreads, minCompletionPortThreads);
-                    LogMinThreads();
-                    Console.WriteLine();
+                    var previousMinWorkerThreads = Interlocked.Exchange(ref _minWorkerThreads, minWorkerThreads);
+                    if (previousMinWorkerThreads != minWorkerThreads)
+                    {
+                        LogMinThreads();
+                        ThreadPool.GetMinThreads(out _, out var minCompletionPortThreads);
+                        ThreadPool.SetMinThreads(minWorkerThreads, minCompletionPortThreads);
+                        LogMinThreads();
+                        Console.WriteLine();
+                    }
                 }
-            }
 
-            string content;
+                string content;
 
-            if (string.Equals(threadingModel, "async", StringComparison.OrdinalIgnoreCase))
-            {
+                if (string.Equals(threadingModel, "async", StringComparison.OrdinalIgnoreCase))
+                {
 #if NET48
-                using (var webClient = new WebClient()) {
-                    content = await webClient.DownloadStringTaskAsync(uri);
-                }
+                    using (var webClient = new WebClient())
+                    {
+                        content = await webClient.DownloadStringTaskAsync(uri);
+                    }
 #else
-                using (var response = await _httpClient.GetAsync(uri))
-                {
-                    content = await response.Content.ReadAsStringAsync();
-                }
+                    using (var response = await _httpClient.GetAsync(uri))
+                    {
+                        content = await response.Content.ReadAsStringAsync();
+                    }
 #endif
-            }
-            else if (string.Equals(threadingModel, "syncoverasync", StringComparison.OrdinalIgnoreCase))
-            {
+                }
+                else if (string.Equals(threadingModel, "syncoverasync", StringComparison.OrdinalIgnoreCase))
+                {
 #if NET48
-                using (var webClient = new WebClient())
-                {
-                    content = webClient.DownloadStringTaskAsync(uri).Result;
-                }
+                    using (var webClient = new WebClient())
+                    {
+                        content = webClient.DownloadStringTaskAsync(uri).Result;
+                    }
 #else
-                using (var response = _httpClient.GetAsync(uri).Result)
-                {
-                    content = response.Content.ReadAsStringAsync().Result;
-                }
+                    using (var response = _httpClient.GetAsync(uri).Result)
+                    {
+                        content = response.Content.ReadAsStringAsync().Result;
+                    }
 #endif
-            }
-            else if (string.Equals(threadingModel, "sync", StringComparison.OrdinalIgnoreCase))
-            {
+                }
+                else if (string.Equals(threadingModel, "sync", StringComparison.OrdinalIgnoreCase))
+                {
 #if NET48
-                using (var webClient = new WebClient())
-                {
-                    content = webClient.DownloadString(uri);
-                }
+                    using (var webClient = new WebClient())
+                    {
+                        content = webClient.DownloadString(uri);
+                    }
 #else
-                throw new InvalidOperationException("There is currently no fully sync HTTP client in .NET Core");
+                    throw new InvalidOperationException("There is currently no fully sync HTTP client in .NET Core");
 #endif
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Invalid threadingModel: '{threadingModel}'");
+                }
+
+                Response.Headers.Add("Threads", Process.GetCurrentProcess().Threads.Count.ToString());
+
+                return content;
             }
-            else
+            finally
             {
-                throw new InvalidOperationException($"Invalid threadingModel: '{threadingModel}'");
+                Interlocked.Decrement(ref Program.CurrentRequests);
             }
-
-            Response.Headers.Add("Threads", Process.GetCurrentProcess().Threads.Count.ToString());
-
-            return content;
         }
 
         private static void LogMinThreads()
