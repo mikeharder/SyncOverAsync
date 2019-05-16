@@ -17,7 +17,9 @@ import java.util.concurrent.Executors;
 public class PassThroughVerticle extends AbstractVerticle {
     private static final String THREADS_HEADER = "Threads";
     private final Vertx vertx;
-    private final ExecutorService pool = Executors.newCachedThreadPool();
+    private ExecutorService pool = Executors.newCachedThreadPool();
+    private ReactorNettyClient reactorNettyClient = new ReactorNettyClient();
+    private OkHttpClient okHttpClient = new OkHttpClient();
 
     public PassThroughVerticle(Vertx vertx) {
         this.vertx = vertx;
@@ -27,6 +29,14 @@ public class PassThroughVerticle extends AbstractVerticle {
     public void start(Future<Void> future) {
         Router router = Router.router(vertx);
         router.get("/").handler(this::run);
+        router.get("/resetPool").handler(ctx -> {
+            pool.shutdown();
+            pool = Executors.newCachedThreadPool();
+        });
+        router.get("/resetPool/:size").handler(ctx -> {
+            pool.shutdown();
+            pool = Executors.newFixedThreadPool(Integer.parseInt(ctx.pathParam("size")));
+        });
 
         vertx.createHttpServer()
             .requestHandler(router)
@@ -65,8 +75,7 @@ public class PassThroughVerticle extends AbstractVerticle {
 
         switch (threadingModel) {
             case ASYNC: {
-                AsyncHttpClient client = new ReactorNettyClient(uri);
-                    client.sendAsync().doOnSuccess(s -> {
+                    reactorNettyClient.sendAsync(uri).doOnSuccess(s -> {
                         routingContext.response().setStatusCode(200).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(s);
                     }).doOnError(t -> {
                         routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t.getMessage());
@@ -77,11 +86,11 @@ public class PassThroughVerticle extends AbstractVerticle {
             case SYNC: {
                 SyncHttpClient client;
                 if (threadingModel == ThreadingModel.SYNC) {
-                    client = new OkHttpClient(uri);
+                    client = okHttpClient;
                 } else {
-                    client = new ReactorNettyClient(uri);
+                    client = reactorNettyClient;
                 }
-                CompletableFuture.supplyAsync(() -> client.send(), pool)
+                CompletableFuture.supplyAsync(() -> client.send(uri), pool)
                         .whenComplete((res, t) -> {
                             if (res != null) {
                                 routingContext.response().setStatusCode(200).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(res);
