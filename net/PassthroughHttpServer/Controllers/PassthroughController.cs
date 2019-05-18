@@ -93,7 +93,7 @@ namespace PassthroughHttpServer.Controllers
                     throw new InvalidOperationException($"Invalid threadingModel: '{threadingModel}'");
                 }
 
-                Response.Headers.Add("Threads", Process.GetCurrentProcess().Threads.Count.ToString());
+                Response.Headers.Add("Threads", Program.Threads.ToString());
 
                 return content;
             }
