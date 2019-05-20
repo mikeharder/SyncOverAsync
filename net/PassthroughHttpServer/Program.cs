@@ -12,6 +12,7 @@ namespace PassthroughHttpServer
     public class Program
     {
         public static int CurrentRequests;
+        public static int Threads;
 
         public static void Main(string[] args)
         {
@@ -99,12 +100,12 @@ namespace PassthroughHttpServer
             var currentPrivilegedProcessorPercentage = ((double)currentPrivilegedProcessorTime.Ticks) / currentElapsedCpuTicks;
             var currentTotalProcessorPercentage = ((double)currentTotalProcessorTime.Ticks) / currentElapsedCpuTicks;
 
-            var threads = Process.GetCurrentProcess().Threads.Count;
+            Threads = Process.GetCurrentProcess().Threads.Count;
 
             Console.WriteLine(
                 $"{DateTime.UtcNow.ToString("o")}" +
                 $"\tCur Req\t{CurrentRequests}" +
-                $"\tThreads\t{threads}" +
+                $"\tThreads\t{Threads}" +
                 $"\tUsr CPU\t{currentUserProcessorPercentage:P1}" +
                 $"\tPrv CPU\t{currentPrivilegedProcessorPercentage:P1}" +
                 $"\tTot CPU\t{currentTotalProcessorPercentage:P1}"
