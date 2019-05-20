@@ -142,7 +142,7 @@ public class PassThroughVerticle extends AbstractVerticle {
                     clientResponses.incrementAndGet();
                 }).doOnError(t -> {
                     serverResponses.incrementAndGet();
-                    routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t.getMessage());
+                    routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t.toString());
                     clientResponses.incrementAndGet();
                 }).subscribe();
                 break;
@@ -164,7 +164,7 @@ public class PassThroughVerticle extends AbstractVerticle {
                             if (res != null) {
                                 routingContext.response().setStatusCode(200).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(res);
                             } else {
-                                routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t == null ? "" : t.getMessage());
+                                routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t == null ? "" : t.toString());
                             }
                             clientResponses.incrementAndGet();
                         });
