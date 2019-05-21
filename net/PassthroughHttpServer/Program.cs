@@ -36,8 +36,16 @@ namespace PassthroughHttpServer
             Console.WriteLine($"ThreadPool.GetMinThreads(): {minWorkerThreads}, {minCompletionPortThreads}");
             Console.WriteLine($"ThreadPool.GetMaxThreads(): {maxWorkerThreads}, {maxCompletionPortThreads}");
 
+#if NET48
+            var defaultConnectionLimit = int.MaxValue;
+            if (args.Length >= 1)
+            {
+                int.TryParse(args[0], out defaultConnectionLimit);
+            }
+            ServicePointManager.DefaultConnectionLimit = defaultConnectionLimit;
             Console.WriteLine($"ServicePointManager.DefaultConnectionLimit: {ServicePointManager.DefaultConnectionLimit}");
             Console.WriteLine();
+#endif
 
             ThreadPool.QueueUserWorkItem(state => WriteResults());
 
