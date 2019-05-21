@@ -1,7 +1,9 @@
 package com.azure.passthrough;
 
+import com.azure.passthrough.client.AsyncHttpClient;
 import com.azure.passthrough.client.OkHttpClient;
 import com.azure.passthrough.client.ReactorNettyClient;
+import com.azure.passthrough.client.RxNettyClient;
 import com.azure.passthrough.client.SyncHttpClient;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
@@ -14,8 +16,6 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +27,7 @@ public class PassThroughVerticle extends AbstractVerticle {
     private final Vertx vertx;
     private ExecutorService pool = Executors.newCachedThreadPool();
     private ReactorNettyClient reactorNettyClient = new ReactorNettyClient();
+    private RxNettyClient rxNettyClient = new RxNettyClient();
     private OkHttpClient okHttpClient = new OkHttpClient();
     private HttpServer vertxServer;
 
@@ -127,25 +128,35 @@ public class PassThroughVerticle extends AbstractVerticle {
         }
 
         switch (threadingModel) {
+            case RXASYNC:
             case ASYNC: {
-                    reactorNettyClient.sendAsync(uri, serverSent).doOnSuccess(s -> {
-                        serverResponses.incrementAndGet();
-                        routingContext.response().setStatusCode(200).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(s);
-                        clientResponses.incrementAndGet();
-                    }).doOnError(t -> {
-                        serverResponses.incrementAndGet();
-                        routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t.getMessage());
-                        clientResponses.incrementAndGet();
-                    }).subscribe();
+                AsyncHttpClient client;
+                if (threadingModel == ThreadingModel.RXASYNC) {
+                    client = rxNettyClient;
+                } else {
+                    client = reactorNettyClient;
+                }
+                client.sendAsync(uri, serverSent).doOnSuccess(s -> {
+                    serverResponses.incrementAndGet();
+                    routingContext.response().setStatusCode(200).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(s);
+                    clientResponses.incrementAndGet();
+                }).doOnError(t -> {
+                    serverResponses.incrementAndGet();
+                    routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t.toString());
+                    clientResponses.incrementAndGet();
+                }).subscribe();
                 break;
             }
+            case RXSYNCOVERASYNC:
             case SYNCOVERASYNC:
             case SYNC: {
                 SyncHttpClient client;
                 if (threadingModel == ThreadingModel.SYNC) {
                     client = okHttpClient;
-                } else {
+                } else if (threadingModel == ThreadingModel.SYNCOVERASYNC) {
                     client = reactorNettyClient;
+                } else {
+                    client = rxNettyClient;
                 }
                 CompletableFuture.supplyAsync(() -> client.send(uri, serverSent), pool)
                         .whenComplete((res, t) -> {
@@ -153,7 +164,7 @@ public class PassThroughVerticle extends AbstractVerticle {
                             if (res != null) {
                                 routingContext.response().setStatusCode(200).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(res);
                             } else {
-                                routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t == null ? "" : t.getMessage());
+                                routingContext.response().setStatusCode(500).putHeader(THREADS_HEADER, Integer.toString(Thread.activeCount())).end(t == null ? "" : t.toString());
                             }
                             clientResponses.incrementAndGet();
                         });
