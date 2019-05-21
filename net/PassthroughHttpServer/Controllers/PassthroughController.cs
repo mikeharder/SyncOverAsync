@@ -17,6 +17,7 @@ namespace PassthroughHttpServer.Controllers
     public class PassthroughController : ControllerBase
     {
         private static int _minWorkerThreads;
+        private static int _defaultConnectionLimit;
 
 #if !NET48
         private static readonly HttpClient _httpClient = new HttpClient();
@@ -28,7 +29,7 @@ namespace PassthroughHttpServer.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<string>> Get(string uri, string threadingModel = "async", int minWorkerThreads = -1)
+        public async Task<ActionResult<string>> Get(string uri, string threadingModel = "async", int minWorkerThreads = -1, int defaultConnectionLimit = -1)
         {
             try
             {
@@ -45,6 +46,21 @@ namespace PassthroughHttpServer.Controllers
                         LogMinThreads();
                         Console.WriteLine();
                     }
+                }
+                if (defaultConnectionLimit > -1 && defaultConnectionLimit != _defaultConnectionLimit)
+                {
+#if NET48
+                    var previousDefaultConnectionLimit = Interlocked.Exchange(ref _defaultConnectionLimit, defaultConnectionLimit);
+                    if (previousDefaultConnectionLimit != defaultConnectionLimit)
+                    {
+                        LogDefaultConnectionLimit();
+                        ServicePointManager.DefaultConnectionLimit = defaultConnectionLimit;
+                        LogDefaultConnectionLimit();
+                        Console.WriteLine();
+                    }
+#else
+                    throw new InvalidOperationException("ServicePointManager.DefaultConnectionLimit only applies to .NET Framework");
+#endif
                 }
 
                 string content;
@@ -108,5 +124,12 @@ namespace PassthroughHttpServer.Controllers
             ThreadPool.GetMinThreads(out var minWorkerThreads, out var minCompletionPortThreads);
             Console.WriteLine($"ThreadPool.GetMinThreads(): {minWorkerThreads}, {minCompletionPortThreads}");
         }
+
+#if NET48
+        private static void LogDefaultConnectionLimit()
+        {            
+            Console.WriteLine($"ServicePointManager.DefaultConnectionLimit: {ServicePointManager.DefaultConnectionLimit}");
+        }
+#endif
     }
 }
