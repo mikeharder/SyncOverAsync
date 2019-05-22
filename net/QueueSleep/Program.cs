@@ -8,14 +8,24 @@ namespace QueueSleep
 {
     class Program
     {
+        private static int _count;
+        private static int _minWorkerThreads;
+
         private static int _queued;
         private static int _started;
         private static int _finished;
+        private static readonly ManualResetEvent _done = new ManualResetEvent(false);
 
         private class Options
         {
-            [Option('c', "count", Default = 100)]
+            [Option('c', "count", Default = 200)]
             public int Count { get; set; }
+
+            [Option('t', "minWorkerThreads", HelpText = "Value of -1 sets min worker threads to maximum available")]
+            public int? MinWorkerThreads { get; set; }
+
+            [Option('s', "printStatistics", Default = true)]
+            public bool PrintStatistics { get; set; }
         }
 
         static int Main(string[] args)
@@ -33,6 +43,123 @@ namespace QueueSleep
 
         private static int Run(Options options)
         {
+            if (options.MinWorkerThreads.HasValue)
+            {
+                var minWorkerThreads = options.MinWorkerThreads.Value;
+
+                if (minWorkerThreads == -1)
+                {
+                    ThreadPool.GetMaxThreads(out minWorkerThreads, out var _);
+                }
+
+                ThreadPool.GetMinThreads(out var _, out var minCompletionPortThreads);
+                ThreadPool.SetMinThreads(minWorkerThreads, minCompletionPortThreads);
+            }
+
+            PrintInitialStatus();
+
+            _count = options.Count;
+
+            var writeResultsThread = new Thread(() => WriteResults());
+            writeResultsThread.Start();
+
+            var sw = Stopwatch.StartNew();
+            for (int i = 0; i < _count; i++)
+            {
+                Interlocked.Increment(ref _queued);
+                QueueWorkItem(SleepAndDoWork);
+            }
+            _done.WaitOne();
+            sw.Stop();
+
+            writeResultsThread.Join();
+
+            Console.WriteLine($"Executed {_count:n0} work items with {_minWorkerThreads:n0} minWorkerThreads in {sw.Elapsed.TotalSeconds:N2}s");
+
+            return 0;
+        }
+
+        private static void SleepAndDoWork(object state)
+        {
+            Interlocked.Increment(ref _started);
+            Thread.Sleep(1000);
+            var finished = Interlocked.Increment(ref _finished);
+            if (finished == _count)
+            {
+                _done.Set();
+            }
+        }
+
+        private static bool QueueWorkItem(WaitCallback callback)
+        {
+            return ThreadPool.QueueUserWorkItem(callback);
+        }
+
+        private static void WriteResults()
+        {
+            var lastUserProcessorTime = TimeSpan.Zero;
+            var lastPrivilegedProcessorTime = TimeSpan.Zero;
+            var lastTotalProcessorTime = TimeSpan.Zero;
+            var lastElapsed = TimeSpan.Zero;
+            var stopwatch = Stopwatch.StartNew();
+
+            while (_finished < _count)
+            {
+                var process = Process.GetCurrentProcess();
+                var osThreads = process.Threads.Count;
+
+                var userProcessorTime = process.UserProcessorTime;
+                var currentUserProcessorTime = userProcessorTime - lastUserProcessorTime;
+                lastUserProcessorTime = userProcessorTime;
+
+                var privilegedProcessorTime = process.PrivilegedProcessorTime;
+                var currentPrivilegedProcessorTime = privilegedProcessorTime - lastPrivilegedProcessorTime;
+                lastPrivilegedProcessorTime = privilegedProcessorTime;
+
+                var totalProcessorTime = process.TotalProcessorTime;
+                var currentTotalProcessorTime = totalProcessorTime - lastTotalProcessorTime;
+                lastTotalProcessorTime = totalProcessorTime;
+
+                var elapsed = stopwatch.Elapsed;
+                var currentElapsed = elapsed - lastElapsed;
+                lastElapsed = elapsed;
+
+                Thread.Sleep(1000);
+                WriteResult(osThreads, currentUserProcessorTime, currentPrivilegedProcessorTime, currentTotalProcessorTime, currentElapsed);
+            }
+        }
+
+        private static void WriteResult(int osThreads, TimeSpan currentUserProcessorTime, TimeSpan currentPrivilegedProcessorTime,
+            TimeSpan currentTotalProcessorTime, TimeSpan currentElapsed)
+        {
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var _);
+            ThreadPool.GetMaxThreads(out var maxWorkerThreads, out var _);
+            ThreadPool.GetAvailableThreads(out var availableWorkerThreads, out var _);
+
+            var currentElapsedCpuTicks = currentElapsed.Ticks * Environment.ProcessorCount;
+            var currentUserProcessorPercentage = ((double)currentUserProcessorTime.Ticks) / currentElapsedCpuTicks;
+            var currentPrivilegedProcessorPercentage = ((double)currentPrivilegedProcessorTime.Ticks) / currentElapsedCpuTicks;
+            var currentTotalProcessorPercentage = ((double)currentTotalProcessorTime.Ticks) / currentElapsedCpuTicks;
+
+            Console.WriteLine(
+                $"{DateTime.UtcNow.ToString("o")}" +
+                $"\tQueued\t{_queued}" +
+                $"\tStarted\t{_started}" +
+                $"\tFinishd\t{_finished}" +
+                $"\tTP.Min\t{minWorkerThreads}" +
+                $"\tTP.Max\t{maxWorkerThreads}" +
+                $"\tTP.Cur\t{maxWorkerThreads -  availableWorkerThreads}" +
+                $"\tOsThds\t{osThreads}"
+
+                // CPU data may be inaccurate (total > 100% which should be impossible)
+                //$"\tUsr CPU\t{currentUserProcessorPercentage:P1}" +
+                //$"\tPrv CPU\t{currentPrivilegedProcessorPercentage:P1}" +
+                //$"\tTot CPU\t{currentTotalProcessorPercentage:P1}"
+            );
+        }
+
+        private static void PrintInitialStatus()
+        {
 #if RELEASE
             Console.WriteLine("Configuration: Release");
 #else
@@ -47,61 +174,13 @@ namespace QueueSleep
             {
                 throw new InvalidOperationException("Must be run with server GC");
             }
+
+            ThreadPool.GetMinThreads(out _minWorkerThreads, out var minCompletionPortThreads);
+            ThreadPool.GetMaxThreads(out var maxWorkerThreads, out var maxCompletionPortThreads);
+            Console.WriteLine($"ThreadPool.GetMinThreads(): {_minWorkerThreads}, {minCompletionPortThreads}");
+            Console.WriteLine($"ThreadPool.GetMaxThreads(): {maxWorkerThreads}, {maxCompletionPortThreads}");
+
             Console.WriteLine();
-
-            var writeResultsThread = new Thread(() => WriteResults(options.Count));
-            writeResultsThread.Start();
-
-            for (int i = 0; i < options.Count; i++)
-            {
-                Interlocked.Increment(ref _queued);
-                QueueWorkItem(SleepAndDoWork);
-            }
-
-            writeResultsThread.Join();
-
-            return 0;
         }
-
-        private static void SleepAndDoWork(object state)
-        {
-            Interlocked.Increment(ref _started);
-            Thread.Sleep(1000);
-            Interlocked.Increment(ref _finished);
-        }
-
-        private static bool QueueWorkItem(WaitCallback callback)
-        {
-            return ThreadPool.QueueUserWorkItem(callback);
-        }
-
-        private static void WriteResults(int count)
-        {
-            while (_finished < count)
-            {
-                Thread.Sleep(1000);
-                WriteResult();
-            }
-        }
-
-        private static void WriteResult()
-        {
-            var osThreads = Process.GetCurrentProcess().Threads.Count;
-            ThreadPool.GetMinThreads(out var minWorkerThreads, out var _);
-            ThreadPool.GetMaxThreads(out var maxWorkerThreads, out var _);
-            ThreadPool.GetAvailableThreads(out var availableWorkerThreads, out var _);
-
-            Console.WriteLine(
-                $"{DateTime.UtcNow.ToString("o")}" +
-                $"\tQueued\t{_queued}" +
-                $"\tStarted\t{_started}" +
-                $"\tFinished\t{_finished}" +
-                $"\tTP.Min\t{minWorkerThreads}" +
-                $"\tTP.Max\t{maxWorkerThreads}" +
-                $"\tTP.Avail\t{availableWorkerThreads}" +
-                $"\tOsThds\t{osThreads}"
-            );
-        }
-
     }
 }
