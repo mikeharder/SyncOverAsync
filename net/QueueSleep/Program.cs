@@ -8,7 +8,8 @@ namespace QueueSleep
 {
     class Program
     {
-        private static int _count;
+        private static Options _options;
+
         private static int _minWorkerThreads;
 
         private static int _queued;
@@ -23,6 +24,9 @@ namespace QueueSleep
 
             [Option('t', "minWorkerThreads", HelpText = "Value of -1 sets min worker threads to maximum available")]
             public int? MinWorkerThreads { get; set; }
+
+            [Option('p', "threadPool", HelpText = "[ThreadPool|CachedThreadPool]", Default = "ThreadPool")]
+            public string ThreadPool { get; set; }
 
             [Option('s', "printStatistics", Default = true)]
             public bool PrintStatistics { get; set; }
@@ -43,28 +47,42 @@ namespace QueueSleep
 
         private static int Run(Options options)
         {
-            if (options.MinWorkerThreads.HasValue)
+            _options = options;
+
+            if (_options.MinWorkerThreads.HasValue)
             {
                 var minWorkerThreads = options.MinWorkerThreads.Value;
 
-                if (minWorkerThreads == -1)
+                if (_options.ThreadPool.Equals("ThreadPool", StringComparison.OrdinalIgnoreCase))
                 {
-                    ThreadPool.GetMaxThreads(out minWorkerThreads, out var _);
-                }
+                    if (minWorkerThreads == -1)
+                    {
+                        ThreadPool.GetMaxThreads(out minWorkerThreads, out var _);
+                    }
 
-                ThreadPool.GetMinThreads(out var _, out var minCompletionPortThreads);
-                ThreadPool.SetMinThreads(minWorkerThreads, minCompletionPortThreads);
+                    ThreadPool.GetMinThreads(out var _, out var minCompletionPortThreads);
+                    ThreadPool.SetMinThreads(minWorkerThreads, minCompletionPortThreads);
+                }
+                else if (_options.ThreadPool.Equals("CachedThreadPool", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (minWorkerThreads > 0)
+                    {
+                        CachedThreadPool.MaxThreads = minWorkerThreads;
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Invalid ThreadPool: {_options.ThreadPool}");
+                }
             }
 
             PrintInitialStatus();
-
-            _count = options.Count;
 
             var writeResultsThread = new Thread(() => WriteResults());
             writeResultsThread.Start();
 
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < _count; i++)
+            for (int i = 0; i < _options.Count; i++)
             {
                 Interlocked.Increment(ref _queued);
                 QueueWorkItem(SleepAndDoWork);
@@ -74,7 +92,7 @@ namespace QueueSleep
 
             writeResultsThread.Join();
 
-            Console.WriteLine($"Executed {_count:n0} work items with {_minWorkerThreads:n0} minWorkerThreads in {sw.Elapsed.TotalSeconds:N2}s");
+            Console.WriteLine($"Executed {_options.Count:n0} work items with {_minWorkerThreads:n0} minWorkerThreads in {sw.Elapsed.TotalSeconds:N2}s");
 
             return 0;
         }
@@ -84,7 +102,7 @@ namespace QueueSleep
             Interlocked.Increment(ref _started);
             Thread.Sleep(1000);
             var finished = Interlocked.Increment(ref _finished);
-            if (finished == _count)
+            if (finished == _options.Count)
             {
                 _done.Set();
             }
@@ -92,7 +110,18 @@ namespace QueueSleep
 
         private static bool QueueWorkItem(WaitCallback callback)
         {
-            return ThreadPool.QueueUserWorkItem(callback);
+            if (_options.ThreadPool.Equals("ThreadPool", StringComparison.OrdinalIgnoreCase))
+            {
+                return ThreadPool.QueueUserWorkItem(callback);
+            }
+            else if (_options.ThreadPool.Equals("CachedThreadPool", StringComparison.OrdinalIgnoreCase))
+            {
+                return CachedThreadPool.QueueUserWorkItem(callback);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Invalid ThreadPool: {_options.ThreadPool}");
+            }
         }
 
         private static void WriteResults()
@@ -103,7 +132,7 @@ namespace QueueSleep
             var lastElapsed = TimeSpan.Zero;
             var stopwatch = Stopwatch.StartNew();
 
-            while (_finished < _count)
+            while (_finished < _options.Count)
             {
                 var process = Process.GetCurrentProcess();
                 var osThreads = process.Threads.Count;
@@ -148,13 +177,13 @@ namespace QueueSleep
                 $"\tFinishd\t{_finished}" +
                 $"\tTP.Min\t{minWorkerThreads}" +
                 $"\tTP.Max\t{maxWorkerThreads}" +
-                $"\tTP.Cur\t{maxWorkerThreads -  availableWorkerThreads}" +
+                $"\tTP.Cur\t{maxWorkerThreads - availableWorkerThreads}" +
                 $"\tOsThds\t{osThreads}"
 
-                // CPU data may be inaccurate (total > 100% which should be impossible)
-                //$"\tUsr CPU\t{currentUserProcessorPercentage:P1}" +
-                //$"\tPrv CPU\t{currentPrivilegedProcessorPercentage:P1}" +
-                //$"\tTot CPU\t{currentTotalProcessorPercentage:P1}"
+            // CPU data may be inaccurate (total > 100% which should be impossible)
+            //$"\tUsr CPU\t{currentUserProcessorPercentage:P1}" +
+            //$"\tPrv CPU\t{currentPrivilegedProcessorPercentage:P1}" +
+            //$"\tTot CPU\t{currentTotalProcessorPercentage:P1}"
             );
         }
 
