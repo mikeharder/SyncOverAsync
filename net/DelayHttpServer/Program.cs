@@ -18,6 +18,8 @@ namespace DelayHttpServer
         private static readonly byte[] _helloWorldPayload = Encoding.UTF8.GetBytes("Hello, World!");
         private static readonly int _helloWorldPayloadLength = _helloWorldPayload.Length;
 
+        private static int _additionalDelay = 0;
+
         static void Main(string[] args)
         {
 #if RELEASE
@@ -35,6 +37,8 @@ namespace DelayHttpServer
                 throw new InvalidOperationException("Must be run with server GC");
             }
 
+            Console.WriteLine($"AdditionalDelay: {_additionalDelay}");
+
             Console.WriteLine();
 
             ThreadPool.QueueUserWorkItem(state => WriteResults());
@@ -46,28 +50,46 @@ namespace DelayHttpServer
                 })
                 .Configure(app => app.Run(async context =>
                 {
-                    try
-                    {
-                        Interlocked.Increment(ref _currentRequests);
+                    var path = context.Request.Path.Value;
+                    var trimmedPath = path.Trim(_pathTrimChars);
 
-                        var delayMilliseconds = context.Request.Path.Value.Trim(_pathTrimChars);
-
-                        if (!string.IsNullOrEmpty(delayMilliseconds))
-                        {
-                            // Simulate server processing time
-                            await Task.Delay(int.Parse(delayMilliseconds));
-                        }
-
-                        var response = context.Response;
-                        response.StatusCode = 200;
-                        response.ContentType = "text/plain";
-                        response.ContentLength = _helloWorldPayloadLength;
-
-                        await response.Body.WriteAsync(_helloWorldPayload, 0, _helloWorldPayloadLength);
+                    if (path.Contains("delay", StringComparison.OrdinalIgnoreCase)) {
+                        // trimmedPath: "delay/2000"
+                        _additionalDelay = int.Parse(path.Trim(_pathTrimChars).Substring(path.LastIndexOf('/')));
+                        Console.WriteLine($"AdditionalDelay: {_additionalDelay}");
+                        Console.WriteLine();
                     }
-                    finally
+                    else
                     {
-                        Interlocked.Decrement(ref _currentRequests);
+                        // trimmedPath: "1000"
+                        try
+                        {
+                            Interlocked.Increment(ref _currentRequests);
+
+                            // Calculate total delay
+                            var delay = _additionalDelay;
+                            if (!string.IsNullOrEmpty(trimmedPath))
+                            {
+                                delay += int.Parse(trimmedPath);
+                            }
+
+                            // Simulate server processing time
+                            if (delay > 0)
+                            {
+                                await Task.Delay(delay);
+                            }
+
+                            var response = context.Response;
+                            response.StatusCode = 200;
+                            response.ContentType = "text/plain";
+                            response.ContentLength = _helloWorldPayloadLength;
+
+                            await response.Body.WriteAsync(_helloWorldPayload, 0, _helloWorldPayloadLength);
+                        }
+                        finally
+                        {
+                            Interlocked.Decrement(ref _currentRequests);
+                        }
                     }
                 }))
                 .Build()
