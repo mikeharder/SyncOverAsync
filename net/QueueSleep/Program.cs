@@ -92,7 +92,8 @@ namespace QueueSleep
 
             writeResultsThread.Join();
 
-            Console.WriteLine($"Executed {_options.Count:n0} work items with {_minWorkerThreads:n0} minWorkerThreads in {sw.Elapsed.TotalSeconds:N2}s");
+            var rps = _options.Count / sw.Elapsed.TotalSeconds;
+            Console.WriteLine($"Executed {_options.Count:n0} work items with {_minWorkerThreads:n0} minWorkerThreads in {sw.Elapsed.TotalSeconds:N2}s for {rps:N0} RPS");
 
             return 0;
         }
